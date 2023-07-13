@@ -280,6 +280,10 @@ footer {
     width: 500px !important;
 }
 
+.w-1000px {
+    width: 1000px !important;
+}
+
 ::-webkit-scrollbar {
     width: 10px;
 }

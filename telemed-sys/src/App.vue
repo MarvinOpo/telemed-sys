@@ -8,7 +8,10 @@
 					TELEMEDICINE SYSTEM
 				</q-toolbar-title>
 
-				<q-btn size="lg" dense flat round>Sign In</q-btn>
+				<q-btn v-if="!has_logged_in" @click="dialog.login.is_visible = true" class="q-pa-sm" size="lg" dense
+					flat>Sign In</q-btn>
+
+				<q-btn v-else @click="logout" class="q-pa-sm" size="lg" dense flat>Logout</q-btn>
 			</q-toolbar>
 
 			<q-tabs align="left">
@@ -34,29 +37,145 @@
 			<span class="pa-2">© Copyright 2022 VSMMC | MVO</span>
 		</q-footer>
 	</q-layout>
+
+	<q-dialog v-model="dialog.login.is_visible">
+		<q-card>
+			<q-card-section class="row items-center">
+				<label class="text-h4 text-capitalize">{{ dialog.login.type }}</label>
+				<q-space />
+				<q-btn @click="dialog.login.is_visible = false" color="grey" icon="close" flat />
+			</q-card-section>
+
+			<q-card-section class="w-500px">
+				<q-form ref="login_form">
+					<q-input v-model="dialog.login.data.email" label="Email" :rules="[rules.required]" outlined></q-input>
+
+					<q-input v-model="dialog.login.data.password" label="Password" :rules="[rules.required]" type="password"
+						outlined></q-input>
+
+					<template v-if="dialog.login.type == 'register'">
+						<q-input v-model="dialog.login.data.lname" label="Last Name" :rules="[rules.required]"
+							outlined></q-input>
+
+						<q-input v-model="dialog.login.data.fname" label="First Name" :rules="[rules.required]"
+							outlined></q-input>
+
+						<q-input v-model="dialog.login.data.mname" label="Middle Name" outlined></q-input>
+					</template>
+				</q-form>
+			</q-card-section>
+
+			<q-card-actions align="center" class="q-pa-md">
+				<template v-if="dialog.login.type == 'register'">
+					<q-btn @click="registerUser" class="w-100" color="green-4" label="Register" size="lg" />
+					<div class="row text-center">
+						<q-btn @click="dialog.login.type = 'login'" class="q-mt-sm" color="blue-5" flat
+							style="text-transform: none;">
+							<u>Already have an account?</u>
+						</q-btn>
+					</div>
+				</template>
+				<template v-else>
+					<q-btn class="w-100" color="green-4" label="Login" size="lg" />
+					<div class="row text-center">
+						<q-btn @click="dialog.login.type = 'register'" class="q-mt-sm" color="blue-5" flat
+							style="text-transform: none;">
+							<u>Dont have an account?</u>
+						</q-btn>
+					</div>
+				</template>
+			</q-card-actions>
+		</q-card>
+	</q-dialog>
 </template>
   
 <script setup>
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { storeToRefs } from 'pinia'
 import { useTelemedStore } from './store/pinia'
 
+import { auth } from './services/firebase'
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+
 const { token, has_logged_in } = storeToRefs(useTelemedStore());
 const { setToken, resetStore } = useTelemedStore();
 
+const BASE_URL = import.meta.env.VITE_BASE_URL
+
+const dialog = ref({
+	login: {
+		data: {},
+		is_visible: false,
+		type: 'login'
+	}
+});
+
+const login_form = ref(null);
+
 const router = useRouter();
 const routes = router.options.routes.filter((item) => {
-	return item.name != 'error';
+	return item.name;
 });
 
 const rules = ref({
 	required: v => !!v || 'This field is required',
-	required_array: v => v.length > 0 || 'This field is required',
-	required_int: v => !isNaN(v) || 'This field is required',
-	min_length8: v => (v || '').length >= 8 || 'Must be atleast 8 characters'
 });
+
+const user = ref({
+	data: {}
+});
+
+user.value.name = computed(() => {
+	return user.value.data.fname + ' ' + user.value.data.lname;
+});
+
+async function registerUser() {
+	const valid = await login_form.value.validate();
+	if (!valid) return;
+
+	try {
+		const data = await createUserWithEmailAndPassword(
+			auth,
+			dialog.value.login.data.email,
+			dialog.value.login.data.password
+		);
+
+		user.value.data = Object.assign({}, dialog.value.login.data);
+		user.value.data.remember_token = data.user.accessToken;
+
+		setToken(user.value.data.remember_token);
+		insertUser();
+	} catch (e) {
+		if (e.code === 'auth/email-already-in-use') {
+			console.log('Email already in use. Please choose a different email or login instead.');
+		}
+	}
+}
+
+async function insertUser() {
+	let body = Object.assign({}, user.value.data);
+	body.name = user.value.name;
+
+	const res = await fetch(BASE_URL + '/api/users', {
+		method: 'POST',
+		body: JSON.stringify(body),
+		headers: {
+			'Authorization': token,
+			'Content-Type': 'application/json'
+		}
+	});
+
+	const data = await res.json();
+	if (data.id) console.log('Successfully added user.');
+
+	dialog.value.login.is_visible = false;
+}
+
+function logout() {
+	resetStore();
+}
 
 </script>
 

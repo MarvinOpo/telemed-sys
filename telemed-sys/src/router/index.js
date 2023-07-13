@@ -27,7 +27,6 @@ const routes = [
 	},
 	{
 		path: '/:catchAll(.*)',
-		name: 'error',
 		component: () => import('../views/PageNotFound.vue')
 	}
 ]

@@ -12,33 +12,62 @@
 	</q-card>
 
 	<q-dialog v-model="dialog.patient.is_visible">
-		<q-card>
+		<q-card style="max-width: unset;">
 			<q-card-section>
 				<div class="text-h6">{{ dialog.patient.type }} Patient</div>
 			</q-card-section>
 
-			<q-card-section class="w-500px">
+			<q-card-section class="w-1000px">
 				<q-form ref="patient_form">
-					<q-input v-model="dialog.patient.data.lname" label="Last Name" :rules="[rules.required]"
-						outlined></q-input>
-					<q-input v-model="dialog.patient.data.fname" class="q-mt-sm" label="First Name"
-						:rules="[rules.required]" outlined></q-input>
-					<q-input v-model="dialog.patient.data.mname" class="q-mt-sm" label="Middle Name" outlined></q-input>
-					<q-select v-model="dialog.patient.data.ename" class="q-mt-lg" :options="options.suffix"
-						option-label="label" option-value="value" label="Suffix Name" outlined></q-select>
+					<div class="row">
+						<div class="col-12 col-lg-6 q-pa-sm">
+							<q-input v-model="dialog.patient.data.lname" label="Last Name" :rules="[rules.required]"
+								outlined></q-input>
+						</div>
+						<div class="col-12 col-lg-6 q-pa-sm">
+							<q-input v-model="dialog.patient.data.fname" label="First Name" :rules="[rules.required]"
+								outlined></q-input>
+						</div>
+						<div class="col-12 col-lg-6 q-pa-sm">
+							<q-input v-model="dialog.patient.data.mname" label="Middle Name" outlined></q-input>
+						</div>
+						<div class="col-12 col-lg-6 q-pa-sm">
+							<q-select v-model="dialog.patient.data.ename" :options="options.suffix" option-label="label"
+								option-value="value" label="Suffix Name" outlined></q-select>
+						</div>
+						<div class="col-12 col-lg-6 q-pa-sm q-mt-lg">
+							<q-select v-model="dialog.patient.data.sex" :options="options.sex" option-label="label"
+								option-value="value" label="Sex" :rules="[rules.required]" outlined></q-select>
+						</div>
+						<div class="col-12 col-lg-6 q-pa-sm q-mt-lg">
+							<q-input v-model="dialog.patient.data.dateOfBirth" :rules="[rules.required]"
+								label=" Date of Birth" outlined></q-input>
+						</div>
+						<div class="col-12 col-lg-6 q-pa-sm">
+							<q-input v-model="dialog.patient.data.contactNumber" :rules="[rules.required]"
+								label="Contact Number" outlined></q-input>
+						</div>
+						<div class="col-12 col-lg-6 q-pa-sm">
+							<q-input v-model="dialog.patient.data.email" :rules="[rules.required]" label="Email"
+								outlined></q-input>
+						</div>
+					</div>
 				</q-form>
 			</q-card-section>
 
 			<q-card-actions align="center" class="q-pa-lg">
 				<q-btn @click="dialog.patient.is_visible = false" color="grey" label="Cancel" />
-				<q-btn @click="insertPatient" color="green-4" label="Add" />
+				<q-btn color="green-4" label="Add" />
 			</q-card-actions>
 		</q-card>
 	</q-dialog>
 </template>
+  
 
 <script setup>
 import { ref } from 'vue'
+
+const BASE_URL = import.meta.env.VITE_BASE_URL
 
 const props = defineProps({
 	user: {
@@ -77,19 +106,38 @@ const patients = ref({
 	headers: [
 		{
 			label: 'First Name',
-			field: 'fname'
+			field: 'patfirst'
 		},
 		{
 			label: 'Middle Name',
-			field: 'mname'
+			field: 'patmiddle'
 		},
 		{
 			label: 'Last Name',
-			field: 'lname'
+			field: 'patlast'
 		},
 		{
 			label: 'Suffix Name',
-			field: 'ename'
+			field: 'patsuffix'
+		},
+		{
+			label: 'Sex',
+			field: 'patsex'
+		},
+		{
+			label: 'Date of Birth',
+			field: 'patbdate'
+		},
+		{
+			label: 'Contact Number',
+			field: 'contactNumber'
+		},
+		{
+			label: 'Email',
+			field: 'email'
+		},
+		{
+			label: 'Actions'
 		}
 	],
 	list: [
@@ -102,13 +150,22 @@ const patients = ref({
 	]
 });
 
+getPatients();
+
+async function getPatients() {
+	const res = await fetch(BASE_URL + '/api/patients', { method: 'GET' });
+	const pats = await res.json();
+
+	patients.value.list = pats.data;
+}
+
 function openAddPatientDialog() {
 	dialog.value.patient.type = 'Add';
 	dialog.value.patient.is_visible = true;
 }
 
-function insertPatient() {
-	const valid = patient_form.value.validate();
+async function insertPatient() {
+	const valid = await patient_form.value.validate();
 	if (valid) {
 		console.log(dialog.value.patient.data);
 	}
